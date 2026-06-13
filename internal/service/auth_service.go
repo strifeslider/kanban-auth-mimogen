@@ -12,18 +12,17 @@ import (
 	"github.com/user/kanban-saas/pkg/auth"
 	apperr "github.com/user/kanban-saas/pkg/errors"
 	"github.com/user/kanban-saas/pkg/model"
-	"github.com/user/kanban-saas/services/auth/internal/repository"
 )
 
 type AuthService struct {
-	userRepo       *repository.UserRepository
-	refreshRepo    *repository.RefreshTokenRepository
-	jwtCfg         auth.JWTConfig
+	userRepo    UserRepository
+	refreshRepo RefreshTokenRepository
+	jwtCfg      auth.JWTConfig
 }
 
 func NewAuthService(
-	userRepo *repository.UserRepository,
-	refreshRepo *repository.RefreshTokenRepository,
+	userRepo UserRepository,
+	refreshRepo RefreshTokenRepository,
 	jwtCfg auth.JWTConfig,
 ) *AuthService {
 	return &AuthService{
@@ -65,7 +64,7 @@ func (s *AuthService) Register(ctx context.Context, req model.RegisterRequest) (
 
 func (s *AuthService) Login(ctx context.Context, req model.LoginRequest) (*model.AuthResponse, error) {
 	user, err := s.userRepo.GetByEmail(ctx, req.Email)
-	if err != nil {
+	if err != nil || user == nil {
 		return nil, apperr.Unauthorized("invalid email or password")
 	}
 
@@ -82,7 +81,7 @@ func (s *AuthService) Login(ctx context.Context, req model.LoginRequest) (*model
 
 func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (*model.AuthResponse, error) {
 	userID, err := s.refreshRepo.GetByToken(ctx, refreshToken)
-	if err != nil {
+	if err != nil || userID == nil {
 		return nil, apperr.Unauthorized("invalid refresh token")
 	}
 
@@ -91,7 +90,7 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (*m
 	}
 
 	user, err := s.userRepo.GetByID(ctx, *userID)
-	if err != nil {
+	if err != nil || user == nil {
 		return nil, apperr.Unauthorized("user not found")
 	}
 
@@ -104,7 +103,7 @@ func (s *AuthService) Logout(ctx context.Context, userID uuid.UUID) error {
 
 func (s *AuthService) GetProfile(ctx context.Context, userID uuid.UUID) (*model.User, error) {
 	user, err := s.userRepo.GetByID(ctx, userID)
-	if err != nil {
+	if err != nil || user == nil {
 		return nil, apperr.NotFound("user not found")
 	}
 	return user, nil
@@ -112,7 +111,7 @@ func (s *AuthService) GetProfile(ctx context.Context, userID uuid.UUID) (*model.
 
 func (s *AuthService) UpdateProfile(ctx context.Context, userID uuid.UUID, name string, avatarURL *string) (*model.User, error) {
 	user, err := s.userRepo.GetByID(ctx, userID)
-	if err != nil {
+	if err != nil || user == nil {
 		return nil, apperr.NotFound("user not found")
 	}
 
